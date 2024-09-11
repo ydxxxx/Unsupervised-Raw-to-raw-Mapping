@@ -1,6 +1,6 @@
 # Generalizing ISP Model by Unsupervised Raw-to-raw Mapping
 Official pytorch implementation of "Generalizing ISP Model by Unsupervised Raw-to-raw Mapping" (2024 MM Oral).
-![image](assets/)
+![image](assets/main_figure.png)
 ## Conda Environment
 1. conda create -n raw_to_raw python=3.11
 2. conda activate raw_to_raw
