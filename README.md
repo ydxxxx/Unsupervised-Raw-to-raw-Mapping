@@ -16,4 +16,4 @@ Official pytorch implementation of "Generalizing ISP Model by Unsupervised Raw-t
 1.run `CUDA_VISIBLE_DEVICES=0 python main.py --mode train`
 
 ## Test
-1.run `CUDA_VISIBLE_DEVICES=0 python main.py --mode train`
+1.run `CUDA_VISIBLE_DEVICES=0 python main.py --mode test`
