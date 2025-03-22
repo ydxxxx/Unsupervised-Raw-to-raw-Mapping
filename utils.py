@@ -1,6 +1,10 @@
 import torch
 import torch.nn.functional as F
 import logging
+from torch import pixel_shuffle, pixel_unshuffle
+import cv2
+import numpy as np
+import os
 
 
 def calculate_psnr(pre_image, image):
@@ -20,6 +24,46 @@ def pad_image(image, patch_size):
     image = F.pad(image, (0, pad_w, 0, pad_h))
     return image
 
+def split_large_image(**kwargs):
+    image, type = kwargs['image'],kwargs['type']
+    if type=='split':
+        size = kwargs['patch_size']
+        height, width = image.shape[:2]
+        # 计算分割后的小图片数量
+        num_cols = width // size
+        num_rows = height // size
+        small_images = []
+        for row in range(num_rows):
+            for col in range(num_cols):
+                # 计算每个小图片的位置
+                left = col * size
+                top = row * size
+                right = left + size
+                bottom = top + size
+                # 分割并保存小图片
+                small_image = image[top:bottom,left:right, ...]
+                small_images.append(small_image)
+        return small_images
+    elif type=='zoom':
+        processed_image_size = kwargs['processed_image_size']
+        return [cv2.resize(image,processed_image_size)]
+
+
+def space_to_depth(raw):
+    if not torch.is_tensor(raw):
+        raw = torch.tensor(raw)
+    raw = pixel_unshuffle(raw, 2)
+    raw = np.array(raw)
+    return raw
+
+
+def depth_to_space(feature_maps):
+    if not torch.is_tensor(feature_maps):
+        feature_maps = torch.tensor(feature_maps)
+    feature_maps = pixel_shuffle(feature_maps, 2)
+    feature_maps = np.array(feature_maps.to('cpu'))
+    return feature_maps
+
 
 
 class Logger:
@@ -28,7 +72,7 @@ class Logger:
     #######################################################################################################################################
     def __init__(self,args):
         self.args = args
-        self.log_path = args.save_path
+        self.log_path = os.path.join(args.save_path, 'logger.log')
 
         self.logging_level = logging.DEBUG
         self.file_level = logging.DEBUG

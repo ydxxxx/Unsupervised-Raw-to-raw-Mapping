@@ -13,8 +13,8 @@ from utils import calculate_psnr, Logger
 
 class Tester:
     def __init__(self, args):
-        super(Tester, self).__init__(args)
-        self.logger = Logger(args.save_path)
+        super(Tester, self).__init__()
+        self.logger = Logger(args)
         self.args = args
         self.device = args.device
         self.mae = nn.L1Loss()

@@ -15,13 +15,14 @@ def get_argument():
     parser.add_argument('--train_data_path',default='dataset/processed/unpaired/')
     parser.add_argument('--val_data_path', default='dataset/processed/train/')
     parser.add_argument('--test_data_path', default='dataset/paired')
-    parser.add_argument('--save_path', type=str, default='in_paper/simple_cnn')
-    parser.add_argument('--ckpt_path',type=str,default=None)
+    parser.add_argument('--save_path', type=str, default='experiments/conformer_w_cstpp')
+    parser.add_argument('--ckpt_path',type=str,default='None')
+    parser.add_argument('--weights_path', type=str, default='None')
     # training settings
     parser.add_argument('--mode', choices=['train', 'test'],default='train')
     parser.add_argument('--seed', default=114514)
     parser.add_argument('--save_freq', type=int, default=1)
-    parser.add_argument('--max_epoch', type=int, default=40)
+    parser.add_argument('--max_epoch', type=int, default=50)
     parser.add_argument('--start_epoch', type=int, default=-1)
     parser.add_argument('--train_batch_size', type=int, default=4)
     parser.add_argument('--val_batch_size', type=int, default=1)
@@ -42,7 +43,10 @@ def get_argument():
     args.val_data_path = os.path.join(args.parent_path, args.val_data_path)
     args.ckpt_path = os.path.join(args.parent_path, args.ckpt_path)
     args.save_path = os.path.join(args.parent_path, args.save_path)
+    args.weights_path = os.path.join(args.parent_path, args.weights_path)
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    os.makedirs(args.save_path, exist_ok=True)
     return args
 
 

@@ -406,6 +406,8 @@ class Conformer(nn.Module):
                                   nn.Linear(in_features=embed_dim,out_features=56))
         self.fin_stage = fin_stage
         self.apply(self._init_weights)
+
+        self.poly_add_const = poly_add_const
         if share_model is not None:
             for name, share_module in share_model.named_modules():
                 if 'out' in name or 'light' in name:

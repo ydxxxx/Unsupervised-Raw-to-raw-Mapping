@@ -1,9 +1,16 @@
 import os
 import scipy.io
 import argparse
-from util import split_large_image,space_to_depth,depth_to_space
 from PIL import Image
 import numpy as np
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
+from utils import split_large_image, depth_to_space
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

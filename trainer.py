@@ -36,7 +36,7 @@ class ReplayBuffer():
 
 class Trainer:
     def __init__(self, args):
-        super(Trainer, self).__init__(args)
+        super(Trainer, self).__init__()
         self.args = args
         self.logger = Logger(args)
         self.logger.info('Start training with args:')
@@ -58,7 +58,7 @@ class Trainer:
         train_dataset = Train_dataset(args.device, args.train_data_path, args.camera1, args.camera2,enable_data_augmentation=True)
         self.train_dataloader = DataLoader(dataset=train_dataset, batch_size=args.train_batch_size,
                                            shuffle=True,pin_memory=False, drop_last=True)
-        val_dataset = Train_dataset(args.device, args.test_data_path, args.camera1, args.camera2,enable_data_augmentation=False)
+        val_dataset = Train_dataset(args.device, args.val_data_path, args.camera1, args.camera2,enable_data_augmentation=False)
         self.val_dataloader = DataLoader(dataset=val_dataset, batch_size=args.val_batch_size,
                                          shuffle=False,pin_memory=False, drop_last=True)
 
@@ -77,7 +77,7 @@ class Trainer:
             embed_dim=self.args.embed_dim,
             depth=self.args.depth,
             down_scale_times=self.args.down_scale_times,
-            share_model=self.gen_a2b
+            share_model=self.gen_a2b if self.args.share_params == 1 else None
         ).to(self.device)
         self.dis_a = Discriminator(self.args.in_channels).to(self.device)
         self.dis_b = Discriminator(self.args.in_channels).to(self.device)
@@ -153,12 +153,12 @@ class Trainer:
             torch.save(self.train_state['gen_b2a_state_dict'], os.path.join(self.args.save_path, f'gen_b2a_best.pth'))
 
     def train(self):
-        while self.train_state['epoch'] < self.args.epochs:
+        while self.train_state['epoch'] < self.args.max_epoch:
             epoch = self.train_state['epoch']
             self.logger.info(f'start training of epoch {epoch}')
             for key in self.train_state.keys():
                 if 'losses' in key:
-                    self.train_state['key'].append(0)
+                    self.train_state[key].append(0)
             self.gen_a2b.train()
             self.gen_b2a.train()
             for real_a, real_b in tqdm(self.train_dataloader):
@@ -220,16 +220,20 @@ class Trainer:
                 loss_dis_b.backward()
                 torch.nn.utils.clip_grad_norm_(self.dis_b.parameters(), self.args.grad_clip)
                 self.optimizer_dis_b.step()
-                self.train_state['dis_losses'][-1] += (loss_dis_a + loss_dis_b).detach().data.item() / scale
-                self.train_state['gen_losses'][-1] += total_loss_gen.detach().data.item() / scale
-                self.train_state['gen_gan_losses'][-1] += (loss_gan_a2b + loss_gan_b2a).detach().data.item() / scale
-                self.train_state['gen_cycle_losses'][-1] += (loss_cycle_bab + loss_cycle_aba).detach().data.item() / scale
-                self.train_state['gen_identity_losses'][-1] += (loss_identity_a + loss_identity_b).detach().data.item() / scale
+                self.train_state['dis_losses'][-1] += (loss_dis_a + loss_dis_b).detach().data.item() * scale
+                self.train_state['gen_losses'][-1] += total_loss_gen.detach().data.item() * scale
+                self.train_state['gen_gan_losses'][-1] += (loss_gan_a2b + loss_gan_b2a).detach().data.item() * scale
+                self.train_state['gen_cycle_losses'][-1] += (loss_cycle_bab + loss_cycle_aba).detach().data.item() * scale
+                self.train_state['gen_identity_losses'][-1] += (loss_identity_a + loss_identity_b).detach().data.item() * scale
             self.logger.info(f'end training of epoch {epoch} ')
-            self.logger.info('\n'.join(f'{key}: {value[-1]}' for key, value in vars(self.train_state).items() if 'losses' in key))
+            train_loss_log_str = ""
+            for key, value in self.train_state.items():
+                if 'losses' in key:
+                    train_loss_log_str += f'{key}: {value[-1]:.4f} \n'
+            self.logger.info(train_loss_log_str)
             self.val_epoch()
             self.train_state['epoch'] += 1
-            if self.train_state%self.args.save_freq == 0:
+            if self.train_state['epoch']%self.args.save_freq == 0:
                 self.save_ckpt()
 
     def val_epoch(self):
@@ -247,10 +251,14 @@ class Trainer:
                 scale = len(real_a)/len(self.val_dataloader)
                 fake_b = self.gen_a2b(real_a)
                 fake_a = self.gen_b2a(real_b)
-                self.train_state['a2b_mae'][-1] += self.mae(fake_b, real_b).detach().data.item() / scale
-                self.train_state['b2a_mae'][-1] += self.mae(fake_a, real_a).detach().data.item() / scale
-                self.train_state['a2b_ssim'][-1] += self.ssim(fake_b, real_b).detach().data.item() / scale
-                self.train_state['b2a_ssim'][-1] += self.ssim(fake_a, real_a).detach().data.item() / scale
-                self.train_state['a2b_psnr'][-1] += calculate_psnr(fake_b, real_b) / scale
-                self.train_state['b2a_psnr'][-1] += calculate_psnr(fake_a, real_a) / scale
-            self.logger.info('\n'.join(f'{key}: {value[-1]}' for key, value in vars(self.train_state).items() if key in ['mae','ssim','psnr']))
+                self.train_state['a2b_mae'][-1] += self.mae(fake_b, real_b).detach().data.item() * scale
+                self.train_state['b2a_mae'][-1] += self.mae(fake_a, real_a).detach().data.item() * scale
+                self.train_state['a2b_ssim'][-1] += self.ssim(fake_b, real_b).detach().data.item() * scale
+                self.train_state['b2a_ssim'][-1] += self.ssim(fake_a, real_a).detach().data.item() * scale
+                self.train_state['a2b_psnr'][-1] += calculate_psnr(fake_b, real_b) * scale
+                self.train_state['b2a_psnr'][-1] += calculate_psnr(fake_a, real_a) * scale
+            val_metric_log_str = ""
+            for key, value in self.train_state.items():
+                if 'mae' in key or 'ssim' in key or 'psnr' in key:
+                    val_metric_log_str += f'{key}: {value[-1]:.4f} \n'
+            self.logger.info(val_metric_log_str)
